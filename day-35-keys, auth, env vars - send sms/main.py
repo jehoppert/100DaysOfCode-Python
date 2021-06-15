@@ -1,7 +1,7 @@
 # https://openweathermap.org/
 
-import requests
 import os
+import requests
 from twilio.rest import Client
 
 # create env vars with below in terminal
