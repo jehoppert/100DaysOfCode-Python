@@ -10,12 +10,13 @@ from data_manager import DataManager
 from flight_search import FlightSearch
 from notification_manager import NotificationManager
 
+FROM_CITY_IATA = "LON"
+
 data_manager = DataManager()
-sheet_data = data_manager.get_destination_data()
 flight_search = FlightSearch()
 notification_manager = NotificationManager()
 
-FROM_CITY_IATA = "LON"
+sheet_data = data_manager.get_destination_data()
 
 update_required = False
 for row in sheet_data:
@@ -36,6 +37,20 @@ for row in sheet_data:
     flight = flight_search.flight_search(
         FROM_CITY_IATA, row['iataCode'], from_date=tomorrow, to_date=six_month_from_tday)
 
+    if flight is None:
+        continue
+
     if flight.price < row["lowestPrice"]:
-        notification_manager.send_sms(
-            message=f"Low price alert! Only £{flight.price} to fly from {flight.origin_city}-{flight.origin_airport} to {flight.destination_city}-{flight.destination_airport}, from {flight.out_date} to {flight.return_date}")
+
+        users = data_manager.get_customer_emails()
+        emails = [row['email'] for row in users]
+        names = [row['firstName'] for row in users]
+
+        message = f"Low price alert! Only £{flight.price} to fly from {flight.origin_city}-{flight.origin_airport} to {flight.destination_city}-{flight.destination_airport}, from {flight.out_date} to {flight.return_date}"
+
+        if flight.stop_overs > 0:
+            message += f"\nFlight has {flight.stop_overs} stop over, via {flight.via_city}."
+
+        link = f"https://www.google.co.uk/flights?hl=en#flt={flight.origin_airport}.{flight.destination_airport}.{flight.out_date}*{flight.destination_airport}.{flight.origin_airport}.{flight.return_date}"
+
+        notification_manager.send_emails(emails, message, link)
